@@ -6,6 +6,18 @@
 
 0. **Read the execution guide first**: Read `standards/task-execution.md` to understand the general execution process (task breakdown, planning, confirmations).
 
+1. **Read task notes standard**: Read `standards/task-notes.md` for code review comment format.
+
+2. **Review similar refactoring guides**: Check `workflows/python/refactor-helpers.md` for patterns and consistency.
+
+3. **Search for class usage**: Search the codebase to find where the class is used. This provides crucial context about:
+   - How the class is imported and instantiated
+   - What methods are commonly called
+   - Common patterns and usage scenarios
+   - Integration points with other parts of the system
+   - Edge cases and error handling needs
+   - This context is essential for making informed refactoring decisions
+
 **THEN, follow these specific rules for class refactoring:**
 
 - **Run tests** after each phase - verify all tests pass
@@ -15,86 +27,180 @@
 
 ---
 
+## CRITICAL RULES (NEVER VIOLATE)
+
+- **NEVER** modify public method signatures without searching for all usages first
+- **NEVER** remove a method without checking if it's used elsewhere
+- **NEVER** change return types without updating all callers
+- **NEVER** skip running tests between phases
+- **NEVER** proceed to next phase if current phase has failing tests
+- **NEVER** make changes silently - always explain what was changed and why
+- **NEVER** ignore linting errors - fix them immediately
+- **ALWAYS** search codebase before making structural changes
+- **ALWAYS** verify tests pass after each phase
+- **ALWAYS** explain why a task was skipped
+- **ALWAYS** wait for user confirmation before proceeding to next phase
+- **ALWAYS** present a clear plan before starting refactoring
+
+---
+
+## ERROR HANDLING
+
+If at any point:
+- Tests fail: **STOP immediately**, report to user, do NOT continue
+- Linting errors appear: **STOP immediately**, fix errors before continuing
+- User requests changes: **STOP immediately**, wait for new instructions
+- Ambiguity detected: **STOP immediately**, ask user for clarification
+- Breaking changes detected: **STOP immediately**, present impact analysis to user
+
+**DO NOT** attempt to "fix" things silently or continue with broken tests.
+
+---
+
 ## REFACTORING PHASES
 
 ### Phase 1: Analysis and Planning
 
-- [ ] Read the complete class file
-- [ ] Identify code smells (long methods, duplication, primitive obsession, feature envy)
-- [ ] Identify responsibilities (SRP violations)
-- [ ] Present the plan to the user for approval
-- [ ] **WAIT FOR USER CONFIRMATION** - Do not proceed until user explicitly approves the plan
-- [ ] **EXPLAIN** any skipped tasks
+**Execute in this exact order:**
+
+1. **VERIFY**: Read the complete class file
+2. **VERIFY**: Run existing tests to establish baseline (all tests must pass before starting)
+3. **SEARCH**: Search for class usage in codebase:
+   - Use `grep` or `codebase_search` to find all imports: `grep -r "from.*import.*ClassName"` or `grep -r "import.*ClassName"`
+   - Find all instantiations: `grep -r "ClassName("`
+   - Find all method calls: `grep -r "\.method_name("`
+   - Identify integration points and dependencies
+4. **SEARCH**: Find similar classes in codebase to understand patterns and conventions
+5. **ANALYZE**: Identify code smells (long methods, duplication, primitive obsession, feature envy)
+6. **ANALYZE**: Identify responsibilities (SRP violations)
+7. **ANALYZE**: Identify dependencies that need injection
+8. **PLAN**: Create refactoring plan with:
+   - List of code smells to fix
+   - Dependencies to inject
+   - Methods to extract/refactor
+   - Estimated impact (files that will need updates)
+   - Risk assessment
+9. **PRESENT**: Present the plan to the user using the format in "EXAMPLE: Presenting Analysis Plan" section
+10. **WAIT FOR USER CONFIRMATION** - Do not proceed until user explicitly approves the plan
+11. **EXPLAIN** any skipped tasks
 
 ### Phase 2: Dependency Injection
 
-- [ ] Identify dependencies that should be injected
-- [ ] Use constructor injection (pass dependencies to `__init__`)
-- [ ] Store dependencies as private attributes (prefixed with `_`)
-- [ ] Remove direct instantiation of dependencies
-- [ ] Verify dependency injection works correctly
-- [ ] Verify there are no linting errors
-- [ ] **EXPLAIN** if any dependency injection tasks were skipped (e.g., "No dependencies needed injection, class has no dependencies")
-- [ ] **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
+**Execute in this exact order:**
+
+1. **VERIFY**: No tests are broken before starting (run tests first)
+2. **VERIFY**: Current class structure is understood
+3. **ANALYZE**: List all current dependencies (imports, instantiations)
+4. **ANALYZE**: Check if dependencies are already injected (constructor parameters)
+5. **ANALYZE**: Identify which dependencies should be injected vs created internally:
+   - Used in multiple methods → should be injected
+   - Needs to be mockable for testing → should be injected
+   - Is a service/repository → should be injected
+   - Is a simple value/config → can be created internally
+6. **REFACTOR**: For each dependency to inject:
+   - Add parameter to `__init__`
+   - Store as private attribute (prefixed with `_`)
+   - Remove direct instantiation
+   - Update all callers if needed (check from Phase 1 search)
+7. **VERIFY**: All existing tests still pass
+8. **VERIFY**: No new linting errors introduced
+9. **VERIFY**: Dependency injection works correctly
+10. **EXPLAIN** if any dependency injection tasks were skipped (e.g., "No dependencies needed injection, class has no dependencies")
+11. **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
 
 ### Phase 3: Class Structure and Organization
 
-- [ ] Reorganize structure according to recommended order:
-  1. Code review comment (if applicable)
-  2. Imports (standard library, third-party, local)
-  3. Class-level docstring
-  4. Class properties/attributes (type annotations)
-  5. Constructor (`__init__`)
-  6. Public methods
-  7. Protected methods (`_method`)
-  8. Private methods (`__method`)
-- [ ] Add section separators (`# ───────────────────────────────────────────────────────────`)
-- [ ] Group methods logically by functionality
-- [ ] Verify there are no linting errors
-- [ ] **EXPLAIN** if structure was already correct (e.g., "Class structure was already organized correctly, no changes needed")
-- [ ] **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
+**Execute in this exact order:**
+
+1. **VERIFY**: All tests pass before starting
+2. **REORGANIZE**: Imports (standard library → third-party → local)
+3. **REORGANIZE**: Add class-level docstring (if missing)
+4. **REORGANIZE**: Class properties/attributes (type annotations)
+5. **REORGANIZE**: Methods in order:
+   - Constructor (`__init__`)
+   - Public methods
+   - Protected methods (`_method`)
+   - Private methods (`__method`)
+6. **REORGANIZE**: Group related methods together by functionality
+7. **FORMAT**: Add section separators (`# ───────────────────────────────────────────────────────────`)
+8. **VERIFY**: All tests still pass
+9. **VERIFY**: No linting errors introduced
+10. **EXPLAIN** if structure was already correct (e.g., "Class structure was already organized correctly, no changes needed")
+11. **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
 
 ### Phase 4: Method Refactoring
 
-- [ ] Extract long methods into smaller, focused methods
-- [ ] Remove code duplication
-- [ ] Apply Single Responsibility Principle
-- [ ] Use descriptive method names (snake_case)
-- [ ] Run tests and verify all pass
-- [ ] **EXPLAIN** if no refactoring was needed (e.g., "All methods are already small and focused, no extraction needed")
-- [ ] **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
+**Execute in this exact order:**
+
+1. **VERIFY**: All tests pass before starting
+2. **IDENTIFY**: Long methods (>30-50 lines) to extract
+3. **IDENTIFY**: Code duplication to remove
+4. **IDENTIFY**: Methods violating Single Responsibility Principle
+5. **REFACTOR**: Extract long methods into smaller, focused methods:
+   - Use descriptive method names (snake_case)
+   - Keep methods < 30 lines ideally
+   - Each method should do one thing
+6. **REFACTOR**: Remove code duplication by extracting common logic
+7. **REFACTOR**: Apply Single Responsibility Principle
+8. **VERIFY**: All tests still pass (critical - refactoring can break functionality)
+9. **VERIFY**: No linting errors
+10. **EXPLAIN** if no refactoring was needed (e.g., "All methods are already small and focused, no extraction needed")
+11. **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
 
 ### Phase 5: Documentation (Docstrings)
 
-- [ ] Add class-level docstring explaining purpose (Google style)
-- [ ] Add docstrings to all public methods
-- [ ] Add docstrings to protected methods
-- [ ] Add docstrings to complex private methods
-- [ ] Include `Args:`, `Returns:`, `Raises:`, `Example:` where appropriate
-- [ ] Verify there are no linting errors
-- [ ] **EXPLAIN** if documentation was already complete (e.g., "All methods already have complete docstrings")
-- [ ] **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
+**Execute in this exact order:**
+
+1. **VERIFY**: All tests pass before starting
+2. **ADD**: Class-level docstring explaining purpose (Google style) if missing
+3. **ADD**: Docstrings to all public methods (required)
+4. **ADD**: Docstrings to protected methods (recommended)
+5. **ADD**: Docstrings to complex private methods (if behavior is non-obvious)
+6. **VERIFY**: All docstrings include:
+   - `Args:` section with parameter descriptions
+   - `Returns:` section with return type and description
+   - `Raises:` section if method raises exceptions
+   - `Example:` section for complex methods
+7. **VERIFY**: No linting errors
+8. **EXPLAIN** if documentation was already complete (e.g., "All methods already have complete docstrings")
+9. **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
 
 ### Phase 6: Type Hints and Return Types
 
-- [ ] Add type hints to all method parameters
-- [ ] Add return type annotations to all methods
-- [ ] Use `typing` module for complex types (`Optional`, `Union`, `Dict`, `List`, etc.)
-- [ ] Use `from __future__ import annotations` if needed (Python < 3.10)
-- [ ] Verify mypy passes with strict mode
-- [ ] Verify there are no linting errors
-- [ ] **EXPLAIN** if types were already complete (e.g., "All methods already have complete type hints and return types")
-- [ ] **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
+**Execute in this exact order:**
+
+1. **VERIFY**: All tests pass before starting
+2. **ADD**: Type hints to all method parameters
+3. **ADD**: Return type annotations to all methods
+4. **VERIFY**: Use `typing` module for complex types (`Optional`, `Union`, `Dict`, `List`, `Tuple`, etc.)
+5. **VERIFY**: Use `Optional[Type]` or `Type | None` for nullable types
+6. **VERIFY**: Use `Union[Type1, Type2]` or `Type1 | Type2` for union types
+7. **VERIFY**: Avoid `Any` type when specific type is known (use `grep` to find actual types)
+8. **VERIFY**: Use `from __future__ import annotations` if needed (Python < 3.10)
+9. **VERIFY**: mypy passes with strict mode
+10. **VERIFY**: No linting errors (ruff, mypy)
+11. **EXPLAIN** if types were already complete (e.g., "All methods already have complete type hints and return types")
+12. **WAIT FOR USER CONFIRMATION** - Explicitly stop and wait for user approval before continuing
 
 ### Phase 7: Final Verification
 
-- [ ] Add code review comment at the beginning of the file (see `standards/task-notes.md` for format)
-- [ ] Run all tests and verify they pass
-- [ ] Verify no linting errors (ruff, mypy)
-- [ ] Review code structure and navigability
-- [ ] Confirm complete documentation
-- [ ] **EXPLAIN** any verification issues found and how they were resolved
-- [ ] **WAIT FOR USER CONFIRMATION** - Present final summary and wait for user approval
+**Execute in this exact order:**
+
+1. **ADD**: Code review comment at the beginning of the file (see `standards/task-notes.md` for format)
+2. **VERIFY**: Run all tests and verify 100% pass rate
+3. **VERIFY**: No linting errors (ruff, mypy) - zero tolerance
+4. **VERIFY**: Code structure follows recommended order
+5. **VERIFY**: All public methods have docstrings
+6. **VERIFY**: All methods have type hints and return types
+7. **VERIFY**: Dependencies are injected (no direct instantiation)
+8. **VERIFY**: Methods are < 50 lines each
+9. **VERIFY**: No code duplication detected
+10. **VERIFY**: Section separators present
+11. **REVIEW**: Code structure and navigability
+12. **REVIEW**: Complete documentation
+13. **EXPLAIN** any verification issues found and how they were resolved
+14. **PRESENT**: Final summary with all changes made
+15. **WAIT FOR USER CONFIRMATION** - Present final summary and wait for user approval
 
 ---
 
@@ -285,6 +391,125 @@ async def create_resource(
     # Implementation
     pass
 ```
+
+---
+
+## EXAMPLE: Presenting Analysis Plan
+
+When presenting the refactoring plan to user, use this format:
+
+```
+## Refactoring Plan for ResourceService
+
+### Code Smells Identified:
+1. **Long Method**: `update_resource()` (87 lines) → Extract into 4 methods:
+   - `_update_resource_fields()`
+   - `_update_resource_passwords()`
+   - `_validate_and_update_broker()`
+   - `_update_request_info()`
+
+2. **Code Duplication**: Validation logic repeated 3 times → Extract to `_validate_resource()`
+
+3. **Primitive Obsession**: Status as string → Create `ResourceStatus` enum
+
+4. **Feature Envy**: `_calculate_total()` accesses `subscription` object more than `self` → Move to `Subscription` class
+
+### Dependencies to Inject:
+- `EmailService` (currently instantiated directly in `send_notification()`)
+- `LoggingService` (already injected ✓)
+
+### Methods to Extract:
+- `update_resource()` → 4 smaller methods (see above)
+- `process_payment()` → Extract validation logic
+
+### Proposed Changes:
+- Extract 4 methods from `update_resource()`
+- Create `ResourceStatus` enum in `enums/resource_status.py`
+- Inject `EmailService` via constructor
+- Move `_calculate_total()` to `Subscription` class
+
+### Files That Will Need Updates:
+- `services/resource.py` (main refactoring)
+- `enums/resource_status.py` (new file)
+- `tests/unit/test_resource_service.py` (update tests)
+- `services/subscription.py` (add `calculate_total()` method)
+- `handlers/resource_handler.py` (update to use enum)
+
+### Risk Assessment:
+- **Low Risk**: Method extraction (internal refactoring)
+- **Medium Risk**: Enum creation (requires updating callers)
+- **Medium Risk**: Dependency injection (requires updating instantiation)
+
+### Estimated Impact:
+- 5 files will need updates
+- 2 new files (enum, extracted methods)
+- All existing tests should pass with minor updates
+
+**Proceed with this plan? [Y/N]**
+```
+
+---
+
+## SUCCESS CRITERIA
+
+A refactored class is considered successful when:
+
+- [ ] **All tests pass** (100% pass rate, zero failures)
+- [ ] **Zero linting errors** (ruff, mypy - strict mode)
+- [ ] **All public methods have docstrings** (Google style, complete)
+- [ ] **All methods have type hints** (parameters and return types)
+- [ ] **Dependencies are injected** (no direct instantiation of services/repositories)
+- [ ] **Methods are < 50 lines each** (ideally < 30 lines)
+- [ ] **No code duplication** (DRY principle applied)
+- [ ] **Structure follows recommended order** (imports → docstring → properties → constructor → public → protected → private)
+- [ ] **Section separators present** (clear navigation)
+- [ ] **Code review comment added** (at beginning of file)
+- [ ] **Single Responsibility Principle applied** (class has one clear purpose)
+- [ ] **No code smells** (as identified in Phase 1)
+
+---
+
+## COMMON ERRORS TO AVOID
+
+### Error 1: Breaking Existing Tests
+**Problem**: Refactoring breaks existing functionality
+**Prevention**: 
+- Run tests BEFORE starting each phase
+- Run tests AFTER completing each phase
+- If tests fail, STOP and fix before continuing
+- Never skip test verification
+
+### Error 2: Changing Public API Without Review
+**Problem**: Modifying method signatures without considering callers
+**Prevention**:
+- Search codebase for all usages first (Phase 1)
+- Present API changes to user before implementing
+- Update all callers in same phase if signature changes
+- Never change return types without updating callers
+
+### Error 3: Incomplete Type Hints
+**Problem**: Adding `Any` types instead of specific types
+**Prevention**:
+- Use `grep` to find actual types used in codebase
+- Check return types of dependencies
+- Use `Union` or `Optional` when appropriate
+- Verify with mypy strict mode
+
+### Error 4: Skipping Validation Steps
+**Problem**: Not verifying tests/linting between phases
+**Prevention**:
+- Always run tests after each phase
+- Always verify linting after each phase
+- Never proceed if validation fails
+- Document all verification steps
+
+### Error 5: Not Searching for Usage
+**Problem**: Making changes without understanding impact
+**Prevention**:
+- Always search codebase before structural changes
+- Understand all callers before modifying methods
+- Present impact analysis to user
+- Never assume a method is unused
 
 ---
 
@@ -510,17 +735,25 @@ def create_resource(self, request: Any) -> Response:
 
 ### Bad: Missing Authorization
 
+**Why it's bad**: Security vulnerability, allows unauthorized access, violates security best practices
+**Impact**: Unauthorized users can perform actions, data breach risk, compliance violations
+**Example:**
+
 ```python
 def create_resource(self, request: Any) -> Response:
-    # No authorization check - security risk!
+    # ❌ No authorization check - security risk!
     # Implementation
 ```
 
 ### Bad: Hardcoded Role Checks
 
+**Why it's bad**: Magic strings are error-prone, hard to maintain, violates DRY principle
+**Impact**: Typos cause bugs, role changes require code changes, less flexible
+**Example:**
+
 ```python
 def create_resource(self, request: Any) -> Response:
-    if request.user.role != "admin":  # Should use method or enum
+    if request.user.role != "admin":  # ❌ Should use method or enum
         raise PermissionDenied()
     # Implementation
 ```
@@ -574,16 +807,24 @@ async def create_resource(
 
 ### Bad: Direct Instantiation
 
+**Why it's bad**: Creates tight coupling, makes testing difficult, violates dependency inversion principle
+**Impact**: Cannot mock dependencies in tests, cannot swap implementations, harder to maintain
+**Example:**
+
 ```python
 def process_resource(self, resource_id: str) -> ResourceModel:
-    service = ResourceService()  # Should be injected
+    service = ResourceService()  # ❌ Hard-coded dependency
     return service.process(resource_id)
 ```
 
 ### Bad: Global State
 
+**Why it's bad**: Creates hidden dependencies, makes testing difficult, violates dependency injection principles
+**Impact**: Cannot test in isolation, shared state can cause bugs, harder to reason about code
+**Example:**
+
 ```python
-# Global variable - avoid
+# Global variable - avoid ❌
 _resource_service = ResourceService()
 
 def process_resource(self, resource_id: str) -> ResourceModel:
@@ -592,11 +833,15 @@ def process_resource(self, resource_id: str) -> ResourceModel:
 
 ### Bad: Class Methods for Dependencies
 
+**Why it's bad**: Hides dependency creation, makes testing difficult, violates dependency injection
+**Impact**: Cannot inject different implementations, harder to mock, less flexible
+**Example:**
+
 ```python
 class ResourceService:
     @classmethod
     def create(cls) -> "ResourceService":
-        return cls(dependency)  # Should use constructor injection
+        return cls(dependency)  # ❌ Should use constructor injection
 ```
 
 ---
