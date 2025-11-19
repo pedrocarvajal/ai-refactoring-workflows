@@ -96,11 +96,7 @@
 
 ### Phase 9: Final Verification
 
-- [ ] Add code review comment at the beginning of the file with:
-  - Note indicating this file was code reviewed
-  - Date (YYYY-MM-DD format only, no time) from local system date
-  - Git user name from git configuration (`git config user.name`)
-  - Format: `// Code reviewed on YYYY-MM-DD by {git_user_name}`
+- [ ] Add code review comment at the beginning of the file (see `standards/task-notes.md` for format)
 - [ ] Run all tests and verify they pass
 - [ ] Run tests by individual groups
 - [ ] Verify structure and navigability
